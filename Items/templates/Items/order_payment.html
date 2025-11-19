@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Оплата заказа #{{ order.id }}</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .order-card {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .total {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c5aa0;
+            margin: 20px 0;
+            padding-top: 20px;
+            border-top: 2px solid #eee;
+        }
+        .discount {
+            color: #4CAF50;
+        }
+        .tax {
+            color: #FF9800;
+        }
+        #payment-form {
+            margin-top: 20px;
+        }
+        #payment-element {
+            margin-bottom: 20px;
+        }
+        #submit {
+            background: #5469d4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        #submit:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        #payment-message {
+            margin-top: 15px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="order-card">
+        <h1>🛒 Заказ #{{ order.id }}</h1>
+
+        <h3>Товары в заказе:</h3>
+        {% for order_item in order_items %}
+        <div class="order-item">
+            <span>{{ order_item.item.name }}</span>
+            <span>x{{ order_item.quantity }} = {{ order_item.item.price|floatformat:2 }} {{ order_item.item.currency|upper }}</span>
+        </div>
+        {% endfor %}
+
+        {% if order.discount %}
+        <div class="order-item discount">
+            <span>🎁 Скидка</span>
+            <span>-{{ order.discount.percent_off }}%</span>
+        </div>
+        {% endif %}
+
+        {% if order.tax %}
+        <div class="order-item tax">
+            <span>🏛️ Налог</span>
+            <span>{{ order.tax.tax_rate }}%</span>
+        </div>
+        {% endif %}
+
+        <div class="total">
+            💰 Итого: {{ order.total_amount|floatformat:2 }} {{ order.get_currency|upper }}
+        </div>
+
+        <form id="payment-form">
+            <div id="payment-element"></div>
+            <button id="submit" type="submit">
+                <span id="button-text">Оплатить {{ order.total_amount|floatformat:2 }} {{ order.get_currency|upper }}</span>
+                <span id="button-spinner" style="display: none;">Обработка...</span>
+            </button>
+            <div id="payment-message" class="hidden"></div>
+        </form>
+    </div>
+
+    <script>
+        const stripe = Stripe('{{ stripe_publishable_key }}');
+
+        let elements;
+
+        initialize();
+        checkStatus();
+
+        document.querySelector("#payment-form").addEventListener("submit", handleSubmit);
+
+        async function initialize() {
+            const response = await fetch("/order/{{ order.id }}/pay/", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+
+            const { clientSecret, error } = await response.json();
+
+            if (error) {
+                showMessage(error);
+                return;
+            }
+
+            const appearance = {
+                theme: 'stripe',
+            };
+
+            elements = stripe.elements({ appearance, clientSecret });
+
+            const paymentElement = elements.create("payment");
+            paymentElement.mount("#payment-element");
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            setLoading(true);
+
+            const { error } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: "http://localhost:8000/success/",
+                },
+            });
+
+            if (error.type === "card_error" || error.type === "validation_error") {
+                showMessage(error.message);
+            } else {
+                showMessage("Произошла неожиданная ошибка.");
+            }
+
+            setLoading(false);
+        }
+
+        async function checkStatus() {
+            const clientSecret = new URLSearchParams(window.location.search).get(
+                "payment_intent_client_secret"
+            );
+
+            if (!clientSecret) {
+                return;
+            }
+
+            const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
+
+            switch (paymentIntent.status) {
+                case "succeeded":
+                    showMessage("Оплата прошла успешно!");
+                    break;
+                case "processing":
+                    showMessage("Оплата обрабатывается.");
+                    break;
+                case "requires_payment_method":
+                    showMessage("Оплата не прошла. Пожалуйста, попробуйте другой способ оплаты.");
+                    break;
+                default:
+                    showMessage("Что-то пошло не так.");
+                    break;
+            }
+        }
+
+        function showMessage(messageText) {
+            const messageContainer = document.querySelector("#payment-message");
+            messageContainer.classList.add("error");
+            messageContainer.textContent = messageText;
+            messageContainer.style.display = "block";
+        }
+
+        function setLoading(isLoading) {
+            const submit = document.querySelector("#submit");
+            const buttonText = document.querySelector("#button-text");
+            const buttonSpinner = document.querySelector("#button-spinner");
+
+            submit.disabled = isLoading;
+            buttonText.style.display = isLoading ? "none" : "block";
+            buttonSpinner.style.display = isLoading ? "block" : "none";
+        }
+    </script>
+</body>
+</html>

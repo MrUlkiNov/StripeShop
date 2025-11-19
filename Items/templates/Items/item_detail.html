@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Купить {{ item.name }}</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .product-card {
+            background: white;
+            border: 1px solid #ddd;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .product-name {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .product-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+        .product-price {
+            font-size: 24px;
+            color: #2c5aa0;
+            font-weight: bold;
+            margin-bottom: 25px;
+        }
+        .buy-button {
+            background-color: #6772e5;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        .buy-button:hover {
+            background-color: #5469d4;
+        }
+        .buy-button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="product-card">
+        <h1 class="product-name">{{ item.name }}</h1>
+        <p class="product-description">{{ item.description }}</p>
+        <div class="product-price">{{ item.price }}</div>
+        <button class="buy-button" id="buy-button">Купить сейчас</button>
+    </div>
+
+    <script type="text/javascript">
+        var stripe = Stripe('{{ stripe_publishable_key }}');
+        var buyButton = document.getElementById('buy-button');
+        buyButton.addEventListener('click', function() {
+            buyButton.textContent = 'Подготовка платежа...';
+            buyButton.disabled = true;
+            fetch('/buy/{{ item.id }}/', {method: 'GET'})
+            .then(function(response) {
+                return response.json();
+            })
+            .then(function(session) {
+                if (session.error) {
+                    alert('Ошибка: ' + session.error);
+                    buyButton.textContent = 'Купить сейчас';
+                    buyButton.disabled = false;
+                } else {
+                    return stripe.redirectToCheckout({ sessionId: session.id });
+                }
+            })
+            .then(function(result) {
+                if (result && result.error) {
+                    alert(result.error.message);
+                    buyButton.textContent = 'Купить сейчас';
+                    buyButton.disabled = false;
+                }
+            })
+            .catch(function(error) {
+                console.error('Ошибка:', error);
+                alert('Произошла ошибка при обработке платежа');
+                buyButton.textContent = 'Купить сейчас';
+                buyButton.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>

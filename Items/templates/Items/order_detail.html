@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Оплата заказа #{{ order.id }}</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .order-card { background: white; border: 1px solid #ddd; padding: 30px; border-radius: 10px; }
+        .order-item { display: flex; justify-content: space-between; margin: 10px 0; padding: 10px; background: #f9f9f9; }
+        .total { font-size: 24px; font-weight: bold; color: #2c5aa0; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="order-card">
+        <h1>Заказ #{{ order.id }}</h1>
+
+        {% for order_item in order_items %}
+        <div class="order-item">
+            <span>{{ order_item.item.name }} (x{{ order_item.quantity }})</span>
+            <span>{{ order_item.item.price }} {{ order_item.item.currency }}</span>
+        </div>
+        {% endfor %}
+
+        <p>{{ order_item.item.name }} x{{ order_item.quantity }} - {{ order_item.item.price }} {{ order_item.item.currency|upper }}</p>
+<p><strong>Итого: {{ order.total_amount }} {{ order.get_currency|upper }}</strong></p>
+
+        {% if order.discount %}
+        <p>Скидка: {{ order.discount.percent_off }}%</p>
+        {% endif %}
+
+        {% if order.tax %}
+        <p>Налог: {{ order.tax.tax_rate }}%</p>
+        {% endif %}
+
+        <button id="pay-button">Оплатить заказ</button>
+        <div id="payment-message" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        const stripe = Stripe('{{ stripe_publishable_key }}');
+        const payButton = document.getElementById('pay-button');
+        const messageDiv = document.getElementById('payment-message');
+
+        payButton.addEventListener('click', async () => {
+            payButton.disabled = true;
+            messageDiv.textContent = 'Обработка платежа...';
+
+            try {
+                const response = await fetch('/order/{{ order.id }}/pay/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                const { clientSecret, error } = await response.json();
+
+                if (error) {
+                    messageDiv.textContent = error;
+                    return;
+                }
+
+                const { error: stripeError } = await stripe.confirmPayment({
+                    clientSecret,
+                    elements,
+                    confirmParams: {
+                        return_url: 'http://localhost:8000/success/',
+                    },
+                });
+
+                if (stripeError) {
+                    messageDiv.textContent = stripeError.message;
+                }
+            } catch (err) {
+                messageDiv.textContent = 'Ошибка: ' + err.message;
+            } finally {
+                payButton.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
