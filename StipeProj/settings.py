@@ -136,10 +136,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # stripe_project/settings.py
 
-DATABASES = {
-    'default': dj_database_url.config(default=os.getenv('DATABASE_URL'))
-}
-
 CSRF_TRUSTED_ORIGINS = [
     'https://stripeshop-production-3408.up.railway.app',
     'https://*.railway.app',
