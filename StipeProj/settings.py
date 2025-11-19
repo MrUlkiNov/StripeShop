@@ -29,7 +29,12 @@ SECRET_KEY = 'django-insecure-mqy17)v#@+n7xf8n%hf*&cf-c)!qgrb8))04t3&w+6!c_y9_eh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    'stripeshop-production-3408.up.railway.app',
+    '.railway.app'
+]
 
 
 # Application definition
