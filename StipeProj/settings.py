@@ -135,6 +135,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # stripe_project/settings.py
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://stripeshop-production-3408.up.railway.app',
+    'https://*.railway.app',
+]
+
 STRIPE_PUBLISHABLE_KEYS = {
     'rub': os.getenv('STRIPE_PUBLISHABLE_KEY'),
     'usd': os.getenv('STRIPE_PUBLISHABLE_KEY_USD'),
