@@ -72,6 +72,12 @@ class Order(models.Model):
             self.calculate_total()
         super().save(*args, **kwargs)
 
+    def get_currency(self):
+        """Возвращает валюту заказа (берет из первого товара)"""
+        if self.orderitem_set.exists():
+            return self.orderitem_set.first().item.currency
+        return 'rub'
+
     def __str__(self):
         """ Строковое представление заказа """
         return f"Order #{self.id} - {self.total_amount} {self.get_currency()}"
