@@ -22,7 +22,7 @@ def get_item(request, id : int):
         'stripe_publishable_key': publishable_key,
         'payment_method': 'session',
     }
-    return render(request, 'items/item_detail.html', context)
+    return render(request, 'Items/item_detail.html', context)
 
 def buy_item(request, id : int):
     """ Функция создания сессии для оплаты
@@ -69,7 +69,7 @@ def success(request) -> render:
     Returns:
         HTML страница с сообщением об успехе
     """
-    return render(request, 'items/success.html')
+    return render(request, 'Items/success.html')
 
 def get_stripe_keys(currency: str) -> tuple:
     """ Возвращает ключи Stripe
@@ -162,7 +162,7 @@ def get_order(request, order_id: int) -> render:
         'stripe_publishable_key': publishable_key,
         'payment_method': 'intent',
     }
-    return render(request, 'items/order_detail.html', context)
+    return render(request, 'Items/order_detail.html', context)
 
 
 def buy_order(request, order_id: int) -> JsonResponse:
